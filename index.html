@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SplitVID</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="style.css" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <h1>SplitVID</h1>
+    <div class="upload-section">
+      <input type="file" id="videoFile" accept="video/*" />
+      <input type="number" id="duration" placeholder="Duration per clip (seconds)" value="15" />
+      <button onclick="uploadVideo()">
+        <span id="buttonText">Split Video</span>
+        
+      </button>
+      <div id="estimatedTime" class="text-center mt-2 text-gray-300"></div>
+    </div>
+
+    <div id="result" class="clip-grid"></div>
+  </div>
+
+  <script>
+    async function uploadVideo() {
+      const file = document.getElementById('videoFile').files[0];
+      const duration = document.getElementById('duration').value;
+
+      if (!file) {
+        alert('Please select a video file.');
+        return;
+      }
+
+      // Show spinner and disable button
+      const buttonText = document.getElementById('buttonText');
+      const spinner = document.getElementById('spinner');
+      const estimatedTimeDiv = document.getElementById('estimatedTime');
+      buttonText.innerText = 'Processing...';
+      spinner.classList.remove('hidden');
+      estimatedTimeDiv.innerText = 'Estimating time...';
+
+      const formData = new FormData();
+      formData.append('video', file);
+      formData.append('duration', duration);
+
+      try {
+        const response = await fetch('/split-video', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const result = await response.json();
+        console.log(result); // Log the result to the console
+
+        const resultDiv = document.getElementById('result');
+        if (result.error) {
+          resultDiv.innerHTML = `<p class="text-red-500">${result.error}</p>`;
+        } else {
+          resultDiv.innerHTML = `
+            ${result.clips.map((clip) => `
+              <div class="clip-card">
+                <video src="${clip.previewUrl}" controls class="clip-video"></video>
+                <a href="${clip.url}" download="${clip.name}" class="download-link">Download ${clip.name}</a>
+              </div>
+            `).join('')}
+            <button onclick="downloadZip('${result.uploadId}')" class="w-full mt-4 bg-purple-500 text-white p-2 rounded hover:bg-purple-600">Download All as ZIP</button>
+          `;
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        // Hide spinner and reset button text
+        buttonText.innerText = 'Split Video';
+        spinner.classList.add('hidden');
+        estimatedTimeDiv.innerText = '';
+      }
+    }
+
+    function downloadZip(uploadId) {
+      window.location.href = `/download-zip/${uploadId}`;
+    }
+  </script>
+</body>
+</html>
